@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.axes
-from typing import List, Tuple
+from typing import List, Literal, Optional, Tuple
 
 MM_PER_INCH = 25.4
 MARGIN_MM = 5.0        # margin above the first row, below the last row, and between rows
@@ -160,5 +160,45 @@ def _plot_row(
         x_label = left_margin_inches + i * segment_len * time_to_inches
         # y: top edge of the row's allocated vertical space
         y_label = y_offset + row_half_height_inches
-        ax.text(x_label, y_label, lead_name, va="top", ha="left", fontsize=6,
-                bbox=dict(boxstyle="square,pad=0.15", facecolor="white", edgecolor="none"))
+        ax.text(x_label, y_label, lead_name, va="top", ha="left", fontsize=9, fontfamily="serif")
+
+
+def _plot_grid(
+    ax: matplotlib.axes.Axes,
+    grid_mode: Literal['inch', 'cm'],
+    width_inches: float,
+    height_inches: float,
+) -> None:
+    """Draw a background grid on `ax` with lines spaced according to `grid_mode`.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to draw the grid on. Coordinates are in inches.
+    grid_mode : {'inch', 'cm'}
+        Grid spacing unit. 'inch' draws 10 small squares per inch (step = 0.1 in);
+        'cm' draws lines every 0.1 cm (= 1 mm). In both cases every 5th line is
+        slightly thicker to form major squares.
+    width_inches : float
+        Width of the plot area in inches (used to bound vertical grid lines).
+    height_inches : float
+        Height of the plot area in inches (used to bound horizontal grid lines).
+    """
+    if grid_mode == 'inch':
+        step = 0.1  # 10 small squares per inch
+    else:  # 'cm'
+        step = 1.0 / MM_PER_INCH  # 0.1 cm = 1 mm expressed in inches
+
+    minor_lw = 0.2
+    major_lw = 0.6
+    color = '#f4aaaa'  # light ECG-paper red
+
+    xs = np.arange(0, width_inches + step * 0.5, step)
+    for i, x in enumerate(xs):
+        lw = major_lw if i % 5 == 0 else minor_lw
+        ax.axvline(x, color=color, linewidth=lw, zorder=0)
+
+    ys = np.arange(0, height_inches + step * 0.5, step)
+    for i, y in enumerate(ys):
+        lw = major_lw if i % 5 == 0 else minor_lw
+        ax.axhline(y, color=color, linewidth=lw, zorder=0)

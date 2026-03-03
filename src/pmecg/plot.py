@@ -1,4 +1,4 @@
-from typing import List, Tuple, Union
+from typing import List, Literal, Optional, Tuple, Union
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,6 +9,7 @@ from .utils.plot import (
     _compute_figure_size,
     _compute_row_offsets,
     _nice_tick_step,
+    _plot_grid,
     _plot_row,
 )
 
@@ -18,13 +19,16 @@ ConfigurationDataType = List[List[str] | str] | str
 
 class ECGPlotter:
 
-    def __init__(self, show_grid: bool = True, speed: float = 55.0, voltage: float = 20.0, row_spacing: float = 2.0):
+    def __init__(self, grid_mode: Optional[Literal['inch', 'cm']] = 'cm', speed: float = 55.0, voltage: float = 20.0, row_spacing: float = 2.0):
         """The ECGPlotter class can be used to generate plots for multiple ECGs using the same plotting configuration.
 
         Parameters
         ----------
-        show_grid : bool, optional
-            Whether to show the grid in the plot, by default True
+        grid_mode : {'inch', 'cm'} or None, optional
+            Grid style to overlay on the plot. 'inch' draws 10 small squares per inch
+            (step = 0.1 in); 'cm' draws lines every 0.1 cm (= 1 mm). In both modes
+            every 5th line is slightly thicker. Pass None to disable the grid.
+            By default 'cm'.
         speed : float, optional
             The speed of the plot in mm/s, by default 55.0
         voltage : float, optional
@@ -32,12 +36,12 @@ class ECGPlotter:
         row_spacing : float, optional
             Distance between the zero-lines of consecutive rows, expressed in mV, by default 2.0
         """
-        assert isinstance(show_grid, bool), "show_grid must be a boolean"
+        assert grid_mode in (None, 'inch', 'cm'), "grid_mode must be None, 'inch', or 'cm'"
         assert isinstance(speed, (int, float)) and speed > 0, "speed must be a positive number"
         assert isinstance(voltage, (int, float)) and voltage > 0, "voltage must be a positive number"
         assert isinstance(row_spacing, (int, float)) and row_spacing > 0, "row_spacing must be a positive number"
 
-        self.show_grid = show_grid
+        self.grid_mode = grid_mode
         self.speed = speed
         self.voltage = voltage
         self.row_spacing = row_spacing
@@ -107,6 +111,9 @@ class ECGPlotter:
         ax.set_xlim(0, width_inches)
         ax.set_ylim(0, height_inches)
         ax.set_aspect("equal")
+
+        if self.grid_mode is not None:
+            _plot_grid(ax, self.grid_mode, width_inches, height_inches)
 
         # Draw each row; half the allocated height is used to position labels
         row_half_height_inches = row_spacing_inches / 2.0
