@@ -38,5 +38,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=8.0",
-    "ipython"
+    "ipython",
+    "neurokit2>=0.2.12",
+    "scipy>=1.13.1",
 ]

@@ -266,6 +266,7 @@ def _print_information(
     leads: List[str],
     first_row_top_inches: float,
     information=None,
+    stats=None,
 ) -> None:
     """Annotate the figure with diagnostic parameters and optional patient information.
 
@@ -273,6 +274,8 @@ def _print_information(
     bottom-left corner.  The machine model (from ``information.machine_model``) is
     placed in the bottom-right corner.  Patient/recording metadata (hospital,
     patient name, date) are placed just above the first ECG row, in the top margin.
+    ECG statistics (from ``stats``) are placed in the top-right corner, arranged
+    in columns of up to three rows.
 
     Parameters
     ----------
@@ -294,7 +297,12 @@ def _print_information(
     information : ECGInformation, optional
         Patient/recording metadata. ``information.machine_model`` is printed
         bottom-right; hospital, patient_name and date are printed top-left.
+    stats : ECGStats, optional
+        Computed ECG statistics. Non-None fields are printed top-right in a
+        column-major grid (up to 3 rows per column).
     """
+    from math import ceil
+
     font = {"fontsize": 7, "fontfamily": "monospace"}
     x_left = LEFT_MARGIN_MM / MM_PER_INCH
     x_right = width_inches - (RIGHT_MARGIN_MM / MM_PER_INCH)
@@ -330,3 +338,52 @@ def _print_information(
         for idx, line in enumerate(info_lines):
             y_pos = y_base + idx * line_height
             ax.text(x_left, y_pos, line, va="bottom", ha="left", zorder=5, **font)
+
+    # --- Top-right: ECG statistics grid ---
+    if stats is not None:
+        stat_items: List[Tuple[str, str]] = []
+        if stats.bpm is not None:
+            stat_items.append(("BPM",     f"{stats.bpm:.0f}"))
+        if stats.snr is not None:
+            stat_items.append(("S/N",     f"{stats.snr:.1f} dB"))
+        if stats.rr_interval_ms is not None:
+            stat_items.append(("RR",      f"{stats.rr_interval_ms:.0f} ms"))
+        if stats.hrv_ms is not None:
+            stat_items.append(("HRV",     f"{stats.hrv_ms:.0f} ms"))
+        if stats.pr_interval_ms is not None:
+            stat_items.append(("PR",      f"{stats.pr_interval_ms:.0f} ms"))
+        if stats.qrs_duration_ms is not None:
+            stat_items.append(("QRS",     f"{stats.qrs_duration_ms:.0f} ms"))
+        if stats.qt_interval_ms is not None:
+            stat_items.append(("QT",      f"{stats.qt_interval_ms:.0f} ms"))
+        if stats.qtc_interval_ms is not None:
+            stat_items.append(("QTc",     f"{stats.qtc_interval_ms:.0f} ms"))
+        if stats.p_axis_deg is not None:
+            stat_items.append(("P ax.",   f"{stats.p_axis_deg:.0f}\u00b0"))
+        if stats.qrs_axis_deg is not None:
+            stat_items.append(("QRS ax.", f"{stats.qrs_axis_deg:.0f}\u00b0"))
+        if stats.t_axis_deg is not None:
+            stat_items.append(("T ax.",   f"{stats.t_axis_deg:.0f}\u00b0"))
+
+        if stat_items:
+            n_cols = ceil(len(stat_items) / 3)
+
+            # Uniform cell widths for clean column alignment
+            label_w = max(len(lbl) for lbl, _ in stat_items)
+            value_w = max(len(val) for _, val in stat_items)
+            cells = [f"{lbl:>{label_w}}: {val:<{value_w}}" for lbl, val in stat_items]
+
+            # Column width: cell chars + 14 padding chars, converted to inches
+            # (~0.075 in per char at 7 pt monospace)
+            char_width_in = 0.075
+            col_width = (label_w + 2 + value_w + 14) * char_width_in
+
+            # Anchor: bottom of the stats block aligns with the patient-info baseline
+            y_base = first_row_top_inches + 5.0 / MM_PER_INCH
+
+            for i, cell in enumerate(cells):
+                col = i // 3   # column index (0 = leftmost)
+                row = i % 3    # row index   (0 = top)
+                x = x_right - (n_cols - col) * col_width
+                y = y_base + (2 - row) * line_height
+                ax.text(x, y, cell, va="bottom", ha="left", zorder=5, **font)

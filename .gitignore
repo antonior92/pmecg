@@ -27,3 +27,4 @@ Thumbs.db
 .coverage
 htmlcov/
 simple_plot.py
+example_ecg.mat

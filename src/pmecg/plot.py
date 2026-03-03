@@ -18,6 +18,52 @@ from .utils.plot import (
 
 
 @dataclass
+class ECGStats:
+    """Computed ECG diagnostic statistics to be printed on the plot.
+
+    All fields default to ``None`` (not shown). Any field that is set will be
+    displayed in the top-right corner when ``print_diagnostics=True``, arranged
+    in columns of three rows.
+
+    Parameters
+    ----------
+    bpm : float, optional
+        Heart rate in beats per minute.
+    snr : float, optional
+        Signal-to-noise ratio in dB.
+    rr_interval_ms : float, optional
+        Mean RR interval (beat-to-beat) in milliseconds.
+    hrv_ms : float, optional
+        Heart-rate variability — statistical spread of RR intervals (ms).
+    pr_interval_ms : float, optional
+        PR interval in milliseconds.
+    qrs_duration_ms : float, optional
+        QRS complex duration in milliseconds.
+    qt_interval_ms : float, optional
+        QT interval in milliseconds.
+    qtc_interval_ms : float, optional
+        Corrected QT interval (QTc) in milliseconds.
+    p_axis_deg : float, optional
+        P-wave axis in degrees.
+    qrs_axis_deg : float, optional
+        QRS axis in degrees.
+    t_axis_deg : float, optional
+        T-wave axis in degrees.
+    """
+    bpm: Optional[float] = None
+    snr: Optional[float] = None
+    rr_interval_ms: Optional[float] = None
+    hrv_ms: Optional[float] = None
+    pr_interval_ms: Optional[float] = None
+    qrs_duration_ms: Optional[float] = None
+    qt_interval_ms: Optional[float] = None
+    qtc_interval_ms: Optional[float] = None
+    p_axis_deg: Optional[float] = None
+    qrs_axis_deg: Optional[float] = None
+    t_axis_deg: Optional[float] = None
+
+
+@dataclass
 class ECGInformation:
     """Patient and recording metadata to be printed on the ECG plot.
 
@@ -95,7 +141,8 @@ class ECGPlotter:
              configuration: ConfigurationDataType,
              sampling_frequency: float = 500.0,
              show: bool = True,
-             information: Optional[ECGInformation] = None) -> Figure:
+             information: Optional[ECGInformation] = None,
+             stats: Optional[ECGStats] = None) -> Figure:
         """Plot the ECG in `ecg_data` using the plotting configuration specified in `configuration`.
 
         Parameters
@@ -117,6 +164,10 @@ class ECGPlotter:
             Patient and recording metadata. When ``self.print_diagnostics`` is True, the
             hospital, patient name and date are printed above the first ECG row, and
             the machine model is printed in the bottom-right corner.
+        stats : ECGStats, optional
+            Computed ECG statistics. When ``self.print_diagnostics`` is True, any
+            non-None field is printed in the top-right corner, arranged in columns
+            of up to three rows.
 
         Returns
         -------
@@ -207,6 +258,7 @@ class ECGPlotter:
                 original_leads,
                 first_row_top_inches,
                 information=information,
+                stats=stats,
             )
 
         if show:
