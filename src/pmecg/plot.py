@@ -6,6 +6,7 @@ from matplotlib.figure import Figure
 from .utils.data import _numpy_to_dataframe, _validate_lead_names, _apply_configuration
 from .utils.plot import (
     MM_PER_INCH,
+    LEFT_MARGIN_MM,
     _compute_figure_size,
     _compute_row_offsets,
     _nice_tick_step,
@@ -19,24 +20,23 @@ ConfigurationDataType = List[List[str] | str] | str
 
 class ECGPlotter:
 
-    def __init__(self, grid_mode: Optional[Literal['inch', 'cm']] = 'cm', speed: float = 55.0, voltage: float = 20.0, row_spacing: float = 2.0):
+    def __init__(self, grid_mode: Optional[Literal['inch', 'cm']] = 'cm', speed: float = 50.0, voltage: float = 20.0, row_spacing: float = 2.0):
         """The ECGPlotter class can be used to generate plots for multiple ECGs using the same plotting configuration.
 
         Parameters
         ----------
-        grid_mode : {'inch', 'cm'} or None, optional
-            Grid style to overlay on the plot. 'inch' draws 10 small squares per inch
-            (step = 0.1 in); 'cm' draws lines every 0.1 cm (= 1 mm). In both modes
-            every 5th line is slightly thicker. Pass None to disable the grid.
+        grid_mode : {'cm'} or None, optional
+            Grid style to overlay on the plot. 'cm' draws lines every 0.1 cm (= 1 mm),
+            with every 5th line slightly thicker. Pass None to disable the grid.
             By default 'cm'.
         speed : float, optional
-            The speed of the plot in mm/s, by default 55.0
+            The speed of the plot in mm/s, by default 50.0
         voltage : float, optional
             The space (in mm) corresponding to 1 mV, by default 20.0
         row_spacing : float, optional
             Distance between the zero-lines of consecutive rows, expressed in mV, by default 2.0
         """
-        assert grid_mode in (None, 'inch', 'cm'), "grid_mode must be None, 'inch', or 'cm'"
+        assert grid_mode in (None, 'cm'), "grid_mode must be None or 'cm'"
         assert isinstance(speed, (int, float)) and speed > 0, "speed must be a positive number"
         assert isinstance(voltage, (int, float)) and voltage > 0, "voltage must be a positive number"
         assert isinstance(row_spacing, (int, float)) and row_spacing > 0, "row_spacing must be a positive number"
@@ -121,7 +121,7 @@ class ECGPlotter:
             _plot_row(ax, row, mv_to_inches, time_to_inches, i, y_offsets[i], row_half_height_inches)
 
         # --- Time axis ---
-        left_margin_inches = 10.0 / MM_PER_INCH  # 1 cm left margin in inches
+        left_margin_inches = LEFT_MARGIN_MM / MM_PER_INCH
 
         # Choose a sensible tick spacing (0.2 s, rounded to a nice step)
         total_time_s = seq_len / sampling_frequency

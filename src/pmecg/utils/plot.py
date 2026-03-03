@@ -4,8 +4,13 @@ from typing import List, Literal, Optional, Tuple
 
 MM_PER_INCH = 25.4
 MARGIN_MM = 5.0        # margin above the first row, below the last row, and between rows
-LEFT_MARGIN_MM = 10.0  # 1 cm left margin
+LEFT_MARGIN_MM = 15.0  # 1.5 cm left margin (accommodates calibration pulse)
 RIGHT_MARGIN_MM = 10.0 # 1 cm right margin
+
+# Calibration pulse dimensions
+CAL_PULSE_WIDTH_MM = 5.0   # 1 large square wide
+CAL_PULSE_AMP_MV = 1.0     # standard 1 mV amplitude
+CAL_PULSE_OFFSET_MM = 3.0  # gap from left figure edge to the rising edge
 
 
 def _nice_tick_step(total_time_s: float) -> float:
@@ -104,6 +109,31 @@ def _compute_row_offsets(
     return [first_zero - i * row_spacing_inches for i in range(n_rows)]
 
 
+def _plot_calibration_pulse(
+    ax: matplotlib.axes.Axes,
+    mv_to_inches: float,
+    y_offset: float,
+) -> None:
+    """Draw a 1 mV square calibration pulse (_|-|_) in the left margin for a row.
+
+    The pulse is 1 large square wide (CAL_PULSE_WIDTH_MM = 5 mm) and 1 mV tall,
+    positioned within the left margin starting at CAL_PULSE_OFFSET_MM from the
+    left edge of the figure.
+    """
+    x0 = CAL_PULSE_OFFSET_MM / MM_PER_INCH
+    x1 = (CAL_PULSE_OFFSET_MM + CAL_PULSE_WIDTH_MM) / MM_PER_INCH
+    x_signal = LEFT_MARGIN_MM / MM_PER_INCH
+    amp = CAL_PULSE_AMP_MV * mv_to_inches
+
+    xs = [0.0,      x0,             x0,             x1,             x1,      x_signal]
+    ys = [y_offset, y_offset,       y_offset + amp, y_offset + amp, y_offset, y_offset]
+    ax.plot(xs, ys, color="black", linewidth=0.5)
+
+    # Label centred above the top of the pulse
+    x_mid = (x0 + x1) / 2
+    ax.text(x_mid, y_offset + amp, "1mV", ha="center", va="bottom", fontsize=6, fontfamily="serif")
+
+
 def _plot_row(
     ax: matplotlib.axes.Axes,
     row: Tuple[np.ndarray, List[str]],
@@ -151,6 +181,8 @@ def _plot_row(
 
     ax.plot(x, y, color="black", linewidth=0.5)
 
+    _plot_calibration_pulse(ax, mv_to_inches, y_offset)
+
     # --- Labels ---
     # Each lead occupies an equal segment of the total sample length.
     # Place each label at the top-left corner of its segment's bounding box.
@@ -165,7 +197,7 @@ def _plot_row(
 
 def _plot_grid(
     ax: matplotlib.axes.Axes,
-    grid_mode: Literal['inch', 'cm'],
+    grid_mode: Literal['cm'],
     width_inches: float,
     height_inches: float,
 ) -> None:
@@ -175,9 +207,8 @@ def _plot_grid(
     ----------
     ax : matplotlib.axes.Axes
         The axes to draw the grid on. Coordinates are in inches.
-    grid_mode : {'inch', 'cm'}
-        Grid spacing unit. 'inch' draws 10 small squares per inch (step = 0.1 in);
-        'cm' draws lines every 0.1 cm (= 1 mm). In both cases every 5th line is
+    grid_mode : {'cm'}
+        Grid spacing unit. 'cm' draws lines every 0.1 cm (= 1 mm). Every 5th line is
         slightly thicker to form major squares.
     width_inches : float
         Width of the plot area in inches (used to bound vertical grid lines).
@@ -185,9 +216,8 @@ def _plot_grid(
         Height of the plot area in inches (used to bound horizontal grid lines).
     """
     if grid_mode == 'inch':
-        step = 0.1  # 10 small squares per inch
-    else:  # 'cm'
-        step = 1.0 / MM_PER_INCH  # 0.1 cm = 1 mm expressed in inches
+        raise NotImplementedError("'inch' grid mode is not supported. Use 'cm' or None.")
+    step = 1.0 / MM_PER_INCH  # 0.1 cm = 1 mm expressed in inches
 
     minor_lw = 0.2
     major_lw = 0.6
