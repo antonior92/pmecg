@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Literal, Optional, Tuple, Union
-import pandas as pd
-import numpy as np
+from typing import Literal, Optional, Union
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from matplotlib.figure import Figure
 from .utils.data import _numpy_to_dataframe, _validate_lead_names, _apply_configuration
 from .utils.plot import (
@@ -83,13 +86,27 @@ class ECGInformation:
     date: Optional[str] = None
     machine_model: Optional[str] = None
 
-ECGDataType = Tuple[List[np.ndarray] | np.ndarray, List[str]] | pd.DataFrame
-ConfigurationDataType = List[List[str] | str] | str
+ECGDataType = Union[
+    tuple[Union[list[np.ndarray], np.ndarray], list[str]],
+    pd.DataFrame,
+]
+ConfigurationDataType = Union[list[Union[list[str], str]], str]
 
 
 class ECGPlotter:
 
-    def __init__(self, grid_mode: Optional[Literal['inch', 'cm']] = 'cm', speed: float = 50.0, voltage: float = 20.0, row_spacing: float = 2.0, line_width: float = 0.5, grid_color: str = '#f4aaaa', print_diagnostics: bool = False, show_time_axis: bool = False, disconnect_segments: bool = True):
+    def __init__(
+        self,
+        grid_mode: Optional[Literal['inch', 'cm']] = 'cm',
+        speed: float = 50.0,
+        voltage: float = 20.0,
+        row_spacing: float = 2.0,
+        line_width: float = 0.5,
+        grid_color: str = '#f4aaaa',
+        print_diagnostics: bool = False,
+        show_time_axis: bool = False,
+        disconnect_segments: bool = True,
+    ):
         """The ECGPlotter class can be used to generate plots for multiple ECGs using the same plotting configuration.
 
         Parameters
@@ -177,7 +194,14 @@ class ECGPlotter:
         if isinstance(ecg_data, tuple):
             _validate_lead_names(ecg_data[1])
             df_data = _numpy_to_dataframe(ecg_data[0], ecg_data[1])
-        elif isinstance(ecg_data, np.ndarray) or isinstance(ecg_data, list) and len(ecg_data) > 0 and all(isinstance(row, np.ndarray) for row in ecg_data):
+        elif (
+            isinstance(ecg_data, np.ndarray)
+            or (
+                isinstance(ecg_data, list)
+                and len(ecg_data) > 0
+                and all(isinstance(row, np.ndarray) for row in ecg_data)
+            )
+        ):
             df_data = _numpy_to_dataframe(ecg_data)
         elif isinstance(ecg_data, pd.DataFrame):
             df_data = ecg_data

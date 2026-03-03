@@ -1,6 +1,8 @@
-import numpy as np
+from math import ceil
+from typing import Literal
+
 import matplotlib.axes
-from typing import List, Literal, Optional, Tuple
+import numpy as np
 
 MM_PER_INCH = 25.4
 MARGIN_MM = 5.0                       # margin above the first row, below the last row, and between rows
@@ -244,17 +246,16 @@ def _plot_grid(
 
     minor_lw = 0.2
     major_lw = 0.6
-    color = grid_color
 
     xs = np.arange(0, width_inches + step * 0.5, step)
     for i, x in enumerate(xs):
         lw = major_lw if i % 5 == 0 else minor_lw
-        ax.axvline(x, color=color, linewidth=lw, zorder=0)
+        ax.axvline(x, color=grid_color, linewidth=lw, zorder=0)
 
     ys = np.arange(0, height_inches + step * 0.5, step)
     for i, y in enumerate(ys):
         lw = major_lw if i % 5 == 0 else minor_lw
-        ax.axhline(y, color=color, linewidth=lw, zorder=0)
+        ax.axhline(y, color=grid_color, linewidth=lw, zorder=0)
 
 
 def _print_information(
@@ -301,8 +302,6 @@ def _print_information(
         Computed ECG statistics. Non-None fields are printed top-right in a
         column-major grid (up to 3 rows per column).
     """
-    from math import ceil
-
     font = {"fontsize": 7, "fontfamily": "monospace"}
     x_left = LEFT_MARGIN_MM / MM_PER_INCH
     x_right = width_inches - (RIGHT_MARGIN_MM / MM_PER_INCH)

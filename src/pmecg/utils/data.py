@@ -1,7 +1,10 @@
+from __future__ import annotations
+
+import warnings
+from typing import Optional
+
 import numpy as np
 import pandas as pd
-import warnings
-from typing import List, Tuple, Optional
 
 SUPPORTED_LEADS = ("I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6")
 TEMPLATE_CONFIGURATIONS = {
@@ -41,7 +44,7 @@ def _numpy_to_dataframe(ecg_data: np.ndarray, lead_names: Optional[List[str]] = 
             lead_names = [str(lead) for lead in SUPPORTED_LEADS]
         else:
             assert ecg_data.shape[1] == len(lead_names), "The number of leads in ecg_data must match the number of lead names provided in lead_names"
-    
+
     elif isinstance(ecg_data, list) and len(ecg_data) > 0 and all(isinstance(row, np.ndarray) for row in ecg_data):
         if lead_names is None:
             assert len(ecg_data) == len(SUPPORTED_LEADS), "If lead_names is not provided, ecg_data must have the same number of leads as the standard 12 leads"
@@ -55,7 +58,7 @@ def _numpy_to_dataframe(ecg_data: np.ndarray, lead_names: Optional[List[str]] = 
 
     else:
         raise ValueError("ecg_data must be a numpy array or list of numpy arrays")
-    
+
     # At this stage, we know ecg_data is a 2D numpy array with shape (n_samples, n_leads) and lead_names is a list of strings with length equal to the number of leads
     return pd.DataFrame(ecg_data, columns=[l.upper() for l in lead_names])
 
@@ -80,12 +83,12 @@ def _validate_lead_names(lead_name: str | list[str]) -> None:
     else:
         if lead_name.upper() not in SUPPORTED_LEADS:
             raise ValueError(f"Lead name '{lead_name}' in configuration is not supported. Supported leads are: {SUPPORTED_LEADS}")
-    
 
-# segment_leads 
+
+# segment_leads
 def _segment_leads(df: pd.DataFrame, selected_leads: List[str], disconnect_segments: bool = True) -> Tuple[np.ndarray, List[str]]:
     """Segment the ECG data so that segments of the leads are concatenated in a single vector.
-       
+
        Let $n$ denote the number of leads in `selected_leads`, and let $N$ be the sequence length (in number of data-points).
        The output of this function will be a numpy array of shape (N,).
 
@@ -134,7 +137,7 @@ def _apply_configuration(df: pd.DataFrame, configuration: List[List[str]] | str,
     df : pd.DataFrame
         The DataFrame containing the ECG data, where each column corresponds to a lead and the column names are the names of the leads.
     configuration : List[List[str]] | str
-        The plotting configuration to be applied. If a list of lists of strings is provided, it indicates what leads are plotted in each row. 
+        The plotting configuration to be applied. If a list of lists of strings is provided, it indicates what leads are plotted in each row.
         If a single lead string is provided, it indicates that only that lead should be plotted for its entire duration.
         If the configuration is a string that matches one of the keys in `TEMPLATE_CONFIGURATIONS`, the corresponding template configuration will be applied.
     disconnect_segments : bool, optional
@@ -164,5 +167,5 @@ def _apply_configuration(df: pd.DataFrame, configuration: List[List[str]] | str,
             raise ValueError("configuration list must contain either strings (lead names) or sub-lists of strings (lead names for each row)")
     else:
         raise ValueError("configuration must be either a string or a list of lists of strings")
-    
+
     return tuple(result)
