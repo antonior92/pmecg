@@ -11,6 +11,7 @@ from .utils.data import _numpy_to_dataframe, _validate_lead_names, _apply_config
 from .utils.plot import (
     MM_PER_INCH,
     LEFT_MARGIN_MM,
+    _RenderContext,
     _compute_figure_size,
     _compute_row_offsets,
     _nice_tick_step,
@@ -215,12 +216,16 @@ class ECGPlotter:
         # Number of samples is the same for every row (the full recording length)
         seq_len = df_data.shape[0]
 
-        # Conversion factors
-        mv_to_inches = self.voltage / MM_PER_INCH          # 1 mV  → inches
-        time_to_inches = self.speed / (sampling_frequency * MM_PER_INCH)  # 1 sample → inches
-
-        # Fixed spacing between row zero-lines
-        row_spacing_inches = self.row_spacing * self.voltage / MM_PER_INCH  # row_spacing mV → inches
+        # Conversion factors and per-call render context
+        ctx = _RenderContext(
+            mv_to_inches=self.voltage / MM_PER_INCH,
+            time_to_inches=self.speed / (sampling_frequency * MM_PER_INCH),
+            row_spacing_inches=self.row_spacing * self.voltage / MM_PER_INCH,
+            line_width=self.line_width,
+            grid_color=self.grid_color,
+            speed=self.speed,
+            voltage=self.voltage,
+        )
 
         # Figure dimensions
         width_inches, height_inches = _compute_figure_size(
@@ -229,7 +234,9 @@ class ECGPlotter:
         )
 
         # Pre-compute the zero-line y position (in inches) for every row
-        y_offsets = _compute_row_offsets(n_rows, height_inches, row_spacing_inches, self.print_diagnostics)
+        y_offsets = _compute_row_offsets(
+            n_rows, height_inches, ctx.row_spacing_inches, self.print_diagnostics,
+        )
 
         # Create figure with exact physical dimensions
         fig, ax = plt.subplots(1, 1, figsize=(width_inches, height_inches))
@@ -238,12 +245,10 @@ class ECGPlotter:
         ax.set_aspect("equal")
 
         if self.grid_mode is not None:
-            _plot_grid(ax, self.grid_mode, width_inches, height_inches, self.grid_color)
+            _plot_grid(ax, self.grid_mode, width_inches, height_inches, ctx)
 
-        # Draw each row; half the allocated height is used to position labels
-        row_half_height_inches = row_spacing_inches / 2.0
         for i, row in enumerate(rows):
-            _plot_row(ax, row, mv_to_inches, time_to_inches, i, y_offsets[i], row_half_height_inches, self.line_width)
+            _plot_row(ax, row, ctx, y_offsets[i])
 
         # --- Time axis ---
         left_margin_inches = LEFT_MARGIN_MM / MM_PER_INCH
@@ -272,12 +277,11 @@ class ECGPlotter:
 
         if self.print_diagnostics:
             original_leads = list(df_data.columns)
-            first_row_top_inches = y_offsets[0] + row_half_height_inches
+            first_row_top_inches = y_offsets[0] + ctx.row_spacing_inches / 2.0
             _print_information(
                 ax,
+                ctx,
                 width_inches,
-                self.speed,
-                self.voltage,
                 sampling_frequency,
                 original_leads,
                 first_row_top_inches,

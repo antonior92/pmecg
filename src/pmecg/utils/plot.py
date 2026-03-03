@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from math import ceil
 from typing import Literal
 
@@ -15,6 +16,41 @@ RIGHT_MARGIN_MM = 10.0                # 1 cm right margin
 CAL_PULSE_WIDTH_MM = 5.0   # 1 large square wide
 CAL_PULSE_AMP_MV = 1.0     # standard 1 mV amplitude
 CAL_PULSE_OFFSET_MM = 3.0  # gap from left figure edge to the rising edge
+
+
+@dataclass
+class _RenderContext:
+    """Derived rendering values computed once per :meth:`ECGPlotter.plot` call.
+
+    Bundles the per-configuration constants that would otherwise be forwarded
+    individually to every low-level drawing helper.
+
+    Attributes
+    ----------
+    mv_to_inches : float
+        Conversion factor: 1 mV → inches  (= ``voltage / MM_PER_INCH``).
+    time_to_inches : float
+        Conversion factor: 1 sample → inches
+        (= ``speed / (sampling_frequency * MM_PER_INCH)``).
+    row_spacing_inches : float
+        Distance between consecutive row zero-lines in inches.
+    line_width : float
+        Thickness of ECG signal lines in points.
+    grid_color : str
+        Matplotlib color string for the grid lines.
+    speed : float
+        Paper speed in mm/s (used in the diagnostics label).
+    voltage : float
+        Vertical scale in mm/mV (used in the diagnostics label).
+    """
+
+    mv_to_inches: float
+    time_to_inches: float
+    row_spacing_inches: float
+    line_width: float
+    grid_color: str
+    speed: float
+    voltage: float
 
 
 def _nice_tick_step(total_time_s: float) -> float:
@@ -129,9 +165,8 @@ def _compute_row_offsets(
 
 def _plot_calibration_pulse(
     ax: matplotlib.axes.Axes,
-    mv_to_inches: float,
+    ctx: _RenderContext,
     y_offset: float,
-    line_width: float,
 ) -> None:
     """Draw a 1 mV square calibration pulse (_|-|_) in the left margin for a row.
 
@@ -142,11 +177,11 @@ def _plot_calibration_pulse(
     x0 = CAL_PULSE_OFFSET_MM / MM_PER_INCH
     x1 = (CAL_PULSE_OFFSET_MM + CAL_PULSE_WIDTH_MM) / MM_PER_INCH
     x_signal = LEFT_MARGIN_MM / MM_PER_INCH
-    amp = CAL_PULSE_AMP_MV * mv_to_inches
+    amp = CAL_PULSE_AMP_MV * ctx.mv_to_inches
 
     xs = [0.0,      x0,             x0,             x1,             x1,      x_signal]
     ys = [y_offset, y_offset,       y_offset + amp, y_offset + amp, y_offset, y_offset]
-    ax.plot(xs, ys, color="black", linewidth=line_width)
+    ax.plot(xs, ys, color="black", linewidth=ctx.line_width)
 
     # Label centred above the top of the pulse
     x_mid = (x0 + x1) / 2
@@ -155,13 +190,9 @@ def _plot_calibration_pulse(
 
 def _plot_row(
     ax: matplotlib.axes.Axes,
-    row: Tuple[np.ndarray, List[str]],
-    mv_to_inches: float,
-    time_to_inches: float,
-    row_idx: int,
+    row: tuple[np.ndarray, list[str]],
+    ctx: _RenderContext,
     y_offset: float,
-    row_half_height_inches: float,
-    line_width: float,
 ) -> None:
     """Plot a single ECG row onto `ax`.
 
@@ -169,22 +200,13 @@ def _plot_row(
     ----------
     ax : matplotlib.axes.Axes
         The axes to draw on. Coordinates are in inches.
-    row : Tuple[np.ndarray, List[str]]
+    row : tuple[np.ndarray, list[str]]
         A (signal, leads) pair as produced by `_apply_configuration`.
-    mv_to_inches : float
-        Conversion factor: 1 mV → inches  (= voltage / MM_PER_INCH).
-    time_to_inches : float
-        Conversion factor: 1 sample → inches  (= speed / (fs * MM_PER_INCH)).
-    row_idx : int
-        Zero-based index of this row (used for labelling).
+    ctx : _RenderContext
+        Rendering context with conversion factors and style settings.
     y_offset : float
         Vertical zero-line of this row in figure inches (pre-computed by
         `_compute_row_offsets`).
-    row_half_height_inches : float
-        Half the allocated row height in inches (= row_spacing_inches / 2).
-        Used to position labels at the top of each segment's bounding box.
-    line_width : float
-        Thickness of the plotted lines in points.
     """
     signal, leads = row
     n_samples = len(signal)
@@ -195,23 +217,24 @@ def _plot_row(
     # time_to_inches already encodes both sampling frequency and speed, so a simple
     # multiplication suffices. Shift right by the left margin (1 cm).
     left_margin_inches = LEFT_MARGIN_MM / MM_PER_INCH
-    x = np.arange(n_samples) * time_to_inches + left_margin_inches
+    x = np.arange(n_samples) * ctx.time_to_inches + left_margin_inches
 
     # --- y axis ---
     # Scale the signal from mV to inches, then translate to the row's zero-line.
-    y = signal * mv_to_inches + y_offset
+    y = signal * ctx.mv_to_inches + y_offset
 
-    ax.plot(x, y, color="black", linewidth=line_width)
+    ax.plot(x, y, color="black", linewidth=ctx.line_width)
 
-    _plot_calibration_pulse(ax, mv_to_inches, y_offset, line_width)
+    _plot_calibration_pulse(ax, ctx, y_offset)
 
     # --- Labels ---
     # Each lead occupies an equal segment of the total sample length.
     # Place each label at the top-left corner of its segment's bounding box.
+    row_half_height_inches = ctx.row_spacing_inches / 2.0
     segment_len = n_samples // n_leads
     for i, lead_name in enumerate(leads):
         # x: left edge of this segment (sample i*segment_len), shifted by the left margin
-        x_label = left_margin_inches + i * segment_len * time_to_inches
+        x_label = left_margin_inches + i * segment_len * ctx.time_to_inches
         # y: top edge of the row's allocated vertical space
         y_label = y_offset + row_half_height_inches
         ax.text(x_label, y_label, lead_name, va="top", ha="left", fontsize=9, fontfamily="monospace")
@@ -222,7 +245,7 @@ def _plot_grid(
     grid_mode: Literal['cm'],
     width_inches: float,
     height_inches: float,
-    grid_color: str = '#f4aaaa',
+    ctx: _RenderContext,
 ) -> None:
     """Draw a background grid on `ax` with lines spaced according to `grid_mode`.
 
@@ -237,8 +260,8 @@ def _plot_grid(
         Width of the plot area in inches (used to bound vertical grid lines).
     height_inches : float
         Height of the plot area in inches (used to bound horizontal grid lines).
-    grid_color : str, optional
-        Color of the grid lines, by default '#f4aaaa' (light ECG-paper red).
+    ctx : _RenderContext
+        Rendering context; ``ctx.grid_color`` sets the line colour.
     """
     if grid_mode == 'inch':
         raise NotImplementedError("'inch' grid mode is not supported. Use 'cm' or None.")
@@ -250,21 +273,20 @@ def _plot_grid(
     xs = np.arange(0, width_inches + step * 0.5, step)
     for i, x in enumerate(xs):
         lw = major_lw if i % 5 == 0 else minor_lw
-        ax.axvline(x, color=grid_color, linewidth=lw, zorder=0)
+        ax.axvline(x, color=ctx.grid_color, linewidth=lw, zorder=0)
 
     ys = np.arange(0, height_inches + step * 0.5, step)
     for i, y in enumerate(ys):
         lw = major_lw if i % 5 == 0 else minor_lw
-        ax.axhline(y, color=grid_color, linewidth=lw, zorder=0)
+        ax.axhline(y, color=ctx.grid_color, linewidth=lw, zorder=0)
 
 
 def _print_information(
     ax: matplotlib.axes.Axes,
+    ctx: _RenderContext,
     width_inches: float,
-    speed: float,
-    voltage: float,
     sampling_frequency: float,
-    leads: List[str],
+    leads: list[str],
     first_row_top_inches: float,
     information=None,
     stats=None,
@@ -282,12 +304,11 @@ def _print_information(
     ----------
     ax : matplotlib.axes.Axes
         The axes to annotate.
+    ctx : _RenderContext
+        Rendering context; ``ctx.speed`` and ``ctx.voltage`` are used in the
+        diagnostics label.
     width_inches : float
         Total figure width in inches, used to position the bottom-right text.
-    speed : float
-        Paper speed in mm/s.
-    voltage : float
-        Vertical scale in mm/mV.
     sampling_frequency : float
         Sampling frequency in Hz.
     leads : list of str
@@ -311,8 +332,8 @@ def _print_information(
     # --- Bottom-left: diagnostics (single line) ---
     leads_str = " ".join(leads)
     diag_line = (
-        f"Speed: {speed:.0f} mm/s   "
-        f"Voltage: {voltage:.0f} mm/mV   "
+        f"Speed: {ctx.speed:.0f} mm/s   "
+        f"Voltage: {ctx.voltage:.0f} mm/mV   "
         f"Freq: {sampling_frequency:.0f} Hz   "
         f"Leads: {leads_str}"
     )
