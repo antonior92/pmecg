@@ -3,9 +3,11 @@ import matplotlib.axes
 from typing import List, Literal, Optional, Tuple
 
 MM_PER_INCH = 25.4
-MARGIN_MM = 5.0        # margin above the first row, below the last row, and between rows
-LEFT_MARGIN_MM = 15.0  # 1.5 cm left margin (accommodates calibration pulse)
-RIGHT_MARGIN_MM = 10.0 # 1 cm right margin
+MARGIN_MM = 5.0                       # margin above the first row, below the last row, and between rows
+DIAGNOSTICS_TOP_EXTRA_MARGIN_MM = 14.0 # extra top margin added when print_diagnostics=True
+DIAGNOSTICS_BOT_EXTRA_MARGIN_MM = 5.0 # extra bottom margin added when print_diagnostics=True
+LEFT_MARGIN_MM = 15.0                 # 1.5 cm left margin (accommodates calibration pulse)
+RIGHT_MARGIN_MM = 10.0                # 1 cm right margin
 
 # Calibration pulse dimensions
 CAL_PULSE_WIDTH_MM = 5.0   # 1 large square wide
@@ -38,6 +40,7 @@ def _compute_figure_size(
     speed: float,
     voltage: float,
     row_spacing_mv: float,
+    print_diagnostics: bool = False,
 ) -> Tuple[float, float]:
     """Compute the figure width and height in inches based on ECG parameters.
 
@@ -55,6 +58,9 @@ def _compute_figure_size(
         Vertical scale: mm per mV.
     row_spacing_mv : float
         Distance between consecutive row zero-lines, expressed in mV.
+    print_diagnostics : bool, optional
+        When True, extra top and bottom margins are added to accommodate
+        the diagnostic/patient information text, by default False.
 
     Returns
     -------
@@ -71,8 +77,11 @@ def _compute_figure_size(
     # --- Height ---
     # Each row is allocated row_spacing_mv * voltage mm of vertical space (centred on its zero line).
     # Add a top and bottom margin (MARGIN_MM each) to avoid clipping.
+    # When diagnostics are enabled, add extra space at top and bottom for the annotation text.
     row_spacing_mm = row_spacing_mv * voltage
-    total_height_mm = n_rows * row_spacing_mm + 2 * MARGIN_MM
+    top_extra_mm = DIAGNOSTICS_TOP_EXTRA_MARGIN_MM if print_diagnostics else 0.0
+    bot_extra_mm = DIAGNOSTICS_BOT_EXTRA_MARGIN_MM if print_diagnostics else 0.0
+    total_height_mm = n_rows * row_spacing_mm + 2 * MARGIN_MM + top_extra_mm + bot_extra_mm
     height_inches = total_height_mm / MM_PER_INCH
 
     return width_inches, height_inches
@@ -82,11 +91,14 @@ def _compute_row_offsets(
     n_rows: int,
     height_inches: float,
     row_spacing_inches: float,
+    print_diagnostics: bool = False,
 ) -> List[float]:
     """Pre-compute the vertical centre (zero-line position, in inches) for each ECG row.
 
     Rows are laid out top-to-bottom with a fixed spacing between zero-lines and a
-    MARGIN_MM margin above the first row and below the last row.
+    MARGIN_MM margin above the first row and below the last row. When
+    ``print_diagnostics`` is True the extra top margin is also accounted for so that
+    the patient-info text can sit in the space above the first row.
 
     Parameters
     ----------
@@ -96,13 +108,17 @@ def _compute_row_offsets(
         Total figure height in inches (as returned by `_compute_figure_size`).
     row_spacing_inches : float
         Distance between consecutive zero-lines in inches.
+    print_diagnostics : bool, optional
+        When True, include the extra top diagnostics margin when computing the
+        first row position, by default False.
 
     Returns
     -------
     List[float]
         y-coordinate (in inches from figure bottom) of the zero-line of each row.
     """
-    top_margin_inches = MARGIN_MM / MM_PER_INCH
+    top_extra_mm = DIAGNOSTICS_TOP_EXTRA_MARGIN_MM if print_diagnostics else 0.0
+    top_margin_inches = (MARGIN_MM + top_extra_mm) / MM_PER_INCH
     # First row zero-line sits half a spacing below the top margin.
     # (Rows are evenly spaced; the half-spacing gives equal room above row 0 and below last row.)
     first_zero = height_inches - top_margin_inches - row_spacing_inches / 2.0
@@ -132,7 +148,7 @@ def _plot_calibration_pulse(
 
     # Label centred above the top of the pulse
     x_mid = (x0 + x1) / 2
-    ax.text(x_mid, y_offset + amp, "1mV", ha="center", va="bottom", fontsize=6, fontfamily="serif")
+    ax.text(x_mid, y_offset + amp, "1mV", ha="center", va="bottom", fontsize=6, fontfamily="monospace")
 
 
 def _plot_row(
@@ -196,7 +212,7 @@ def _plot_row(
         x_label = left_margin_inches + i * segment_len * time_to_inches
         # y: top edge of the row's allocated vertical space
         y_label = y_offset + row_half_height_inches
-        ax.text(x_label, y_label, lead_name, va="top", ha="left", fontsize=9, fontfamily="serif")
+        ax.text(x_label, y_label, lead_name, va="top", ha="left", fontsize=9, fontfamily="monospace")
 
 
 def _plot_grid(
@@ -239,3 +255,78 @@ def _plot_grid(
     for i, y in enumerate(ys):
         lw = major_lw if i % 5 == 0 else minor_lw
         ax.axhline(y, color=color, linewidth=lw, zorder=0)
+
+
+def _print_information(
+    ax: matplotlib.axes.Axes,
+    width_inches: float,
+    speed: float,
+    voltage: float,
+    sampling_frequency: float,
+    leads: List[str],
+    first_row_top_inches: float,
+    information=None,
+) -> None:
+    """Annotate the figure with diagnostic parameters and optional patient information.
+
+    Diagnostics (speed, voltage, sampling frequency, leads) are placed in the
+    bottom-left corner.  The machine model (from ``information.machine_model``) is
+    placed in the bottom-right corner.  Patient/recording metadata (hospital,
+    patient name, date) are placed just above the first ECG row, in the top margin.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to annotate.
+    width_inches : float
+        Total figure width in inches, used to position the bottom-right text.
+    speed : float
+        Paper speed in mm/s.
+    voltage : float
+        Vertical scale in mm/mV.
+    sampling_frequency : float
+        Sampling frequency in Hz.
+    leads : list of str
+        Lead names in original input order (no deduplication needed).
+    first_row_top_inches : float
+        Y coordinate (inches) of the top edge of the first ECG row. Patient info
+        is anchored just above this line.
+    information : ECGInformation, optional
+        Patient/recording metadata. ``information.machine_model`` is printed
+        bottom-right; hospital, patient_name and date are printed top-left.
+    """
+    font = {"fontsize": 7, "fontfamily": "monospace"}
+    x_left = LEFT_MARGIN_MM / MM_PER_INCH
+    x_right = width_inches - (RIGHT_MARGIN_MM / MM_PER_INCH)
+    bottom_margin = 2.5 / MM_PER_INCH
+    line_height = 0.13  # inches between lines
+
+    # --- Bottom-left: diagnostics (single line) ---
+    leads_str = " ".join(leads)
+    diag_line = (
+        f"Speed: {speed:.0f} mm/s   "
+        f"Voltage: {voltage:.0f} mm/mV   "
+        f"Freq: {sampling_frequency:.0f} Hz   "
+        f"Leads: {leads_str}"
+    )
+    ax.text(x_left, bottom_margin, diag_line, va="bottom", ha="left", zorder=5, **font)
+
+    # --- Bottom-right: machine model ---
+    if information is not None and getattr(information, "machine_model", None):
+        ax.text(x_right, bottom_margin, information.machine_model,
+                va="bottom", ha="right", zorder=5, **font)
+
+    # --- Top-left: patient / recording info, anchored just above the first ECG row ---
+    if information is not None:
+        info_lines: List[str] = []
+        if getattr(information, "hospital", None):
+            info_lines.append(f"Hospital: {information.hospital}")
+        if getattr(information, "patient_name", None):
+            info_lines.append(f"Patient:  {information.patient_name}")
+        if getattr(information, "date", None):
+            info_lines.append(f"Date:     {information.date}")
+        # y_base sits 5 mm above the first row's top edge; lines stack upward
+        y_base = first_row_top_inches + 5.0 / MM_PER_INCH
+        for idx, line in enumerate(info_lines):
+            y_pos = y_base + idx * line_height
+            ax.text(x_left, y_pos, line, va="bottom", ha="left", zorder=5, **font)
