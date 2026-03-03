@@ -20,7 +20,7 @@ ConfigurationDataType = List[List[str] | str] | str
 
 class ECGPlotter:
 
-    def __init__(self, grid_mode: Optional[Literal['inch', 'cm']] = 'cm', speed: float = 50.0, voltage: float = 20.0, row_spacing: float = 2.0):
+    def __init__(self, grid_mode: Optional[Literal['inch', 'cm']] = 'cm', speed: float = 50.0, voltage: float = 20.0, row_spacing: float = 2.0, line_width: float = 0.5):
         """The ECGPlotter class can be used to generate plots for multiple ECGs using the same plotting configuration.
 
         Parameters
@@ -35,16 +35,20 @@ class ECGPlotter:
             The space (in mm) corresponding to 1 mV, by default 20.0
         row_spacing : float, optional
             Distance between the zero-lines of consecutive rows, expressed in mV, by default 2.0
+        line_width : float, optional
+            Thickness of the ECG signal lines (and calibration pulse) in points, by default 0.5
         """
         assert grid_mode in (None, 'cm'), "grid_mode must be None or 'cm'"
         assert isinstance(speed, (int, float)) and speed > 0, "speed must be a positive number"
         assert isinstance(voltage, (int, float)) and voltage > 0, "voltage must be a positive number"
         assert isinstance(row_spacing, (int, float)) and row_spacing > 0, "row_spacing must be a positive number"
+        assert isinstance(line_width, (int, float)) and line_width > 0, "line_width must be a positive number"
 
         self.grid_mode = grid_mode
         self.speed = speed
         self.voltage = voltage
         self.row_spacing = row_spacing
+        self.line_width = line_width
 
     def plot(self,
              ecg_data: ECGDataType,
@@ -118,7 +122,7 @@ class ECGPlotter:
         # Draw each row; half the allocated height is used to position labels
         row_half_height_inches = row_spacing_inches / 2.0
         for i, row in enumerate(rows):
-            _plot_row(ax, row, mv_to_inches, time_to_inches, i, y_offsets[i], row_half_height_inches)
+            _plot_row(ax, row, mv_to_inches, time_to_inches, i, y_offsets[i], row_half_height_inches, self.line_width)
 
         # --- Time axis ---
         left_margin_inches = LEFT_MARGIN_MM / MM_PER_INCH

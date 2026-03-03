@@ -113,6 +113,7 @@ def _plot_calibration_pulse(
     ax: matplotlib.axes.Axes,
     mv_to_inches: float,
     y_offset: float,
+    line_width: float,
 ) -> None:
     """Draw a 1 mV square calibration pulse (_|-|_) in the left margin for a row.
 
@@ -127,7 +128,7 @@ def _plot_calibration_pulse(
 
     xs = [0.0,      x0,             x0,             x1,             x1,      x_signal]
     ys = [y_offset, y_offset,       y_offset + amp, y_offset + amp, y_offset, y_offset]
-    ax.plot(xs, ys, color="black", linewidth=0.5)
+    ax.plot(xs, ys, color="black", linewidth=line_width)
 
     # Label centred above the top of the pulse
     x_mid = (x0 + x1) / 2
@@ -142,6 +143,7 @@ def _plot_row(
     row_idx: int,
     y_offset: float,
     row_half_height_inches: float,
+    line_width: float,
 ) -> None:
     """Plot a single ECG row onto `ax`.
 
@@ -163,6 +165,8 @@ def _plot_row(
     row_half_height_inches : float
         Half the allocated row height in inches (= row_spacing_inches / 2).
         Used to position labels at the top of each segment's bounding box.
+    line_width : float
+        Thickness of the plotted lines in points.
     """
     signal, leads = row
     n_samples = len(signal)
@@ -179,9 +183,9 @@ def _plot_row(
     # Scale the signal from mV to inches, then translate to the row's zero-line.
     y = signal * mv_to_inches + y_offset
 
-    ax.plot(x, y, color="black", linewidth=0.5)
+    ax.plot(x, y, color="black", linewidth=line_width)
 
-    _plot_calibration_pulse(ax, mv_to_inches, y_offset)
+    _plot_calibration_pulse(ax, mv_to_inches, y_offset, line_width)
 
     # --- Labels ---
     # Each lead occupies an equal segment of the total sample length.
