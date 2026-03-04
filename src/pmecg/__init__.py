@@ -8,4 +8,7 @@ try:
     __version__ = version("pmecg")
 except PackageNotFoundError:
     __version__ = "unknown"
-__author__ = "Fabio Bonassi"
+from .plot import ECGInformation, ECGPlotter, ECGStats
+from .utils.data import SUPPORTED_LEADS
+
+__all__ = ["ECGPlotter", "ECGStats", "ECGInformation", "SUPPORTED_LEADS"]

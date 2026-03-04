@@ -8,10 +8,11 @@
 
 ## Features
 
-- Render ECG signals on a classic grid paper background
-- Support for any lead configuration (1-lead, 6-lead, 12-lead, …)
-- Configurable time/amplitude scales
-- Matplotlib-based — export to PNG, PDF, SVG, and more
+- **Paper-like Rendering**: Classic grid background with major/minor squares.
+- **Flexible Layouts**: Plot any combination of leads using templates ('4x3', '2x6', etc.) or custom lists.
+- **Diagnostic Metadata**: Print patient information (name, age, sex) and recording details directly on the plot.
+- **Automatic Statistics**: Compute and display ECG metrics (HR, SNR, HRV, QRS duration, etc.) with [NeuroKit2](https://github.com/neurokit/NeuroKit) integration.
+- **Matplotlib-based**: Export to high-quality formats like PNG, PDF, or SVG.
 
 ## Installation
 
@@ -19,25 +20,74 @@
 pip install pmecg
 ```
 
-Or with [uv](https://docs.astral.sh/uv/):
-
+For automatic ECG statistics support, install with the `nk` extra:
 ```bash
-uv add pmecg
+pip install "pmecg[nk]"
 ```
 
 ## Quick start
 
 ```python
 import numpy as np
+import pandas as pd
 import pmecg
 
 # 10-second, 12-lead ECG sampled at 500 Hz (synthetic example)
 fs = 500
-t = np.linspace(0, 10, fs * 10)
-leads = {name: np.random.randn(len(t)) * 0.5 for name in pmecg.STANDARD_12_LEADS}
+t = np.linspace(0, 10, int(fs * 10))
+data = {name: np.random.randn(len(t)) * 0.1 for name in pmecg.SUPPORTED_LEADS}
+df = pd.DataFrame(data)
 
-fig = pmecg.plot(leads, fs=fs)
-fig.savefig("ecg.png", dpi=150, bbox_inches="tight")
+# Create a plotter and render a standard 4x3 ECG plot
+plotter = pmecg.ECGPlotter()
+fig = plotter.plot(df, configuration="4x3", sampling_frequency=fs)
+fig.savefig("ecg.png", dpi=300, bbox_inches="tight")
+```
+
+## Advanced Usage
+
+### Patient Metadata and Statistics
+
+You can annotate your plots with patient information and computed diagnostic stats:
+
+```python
+import pmecg
+
+# 1. Define patient/recording information
+info = pmecg.ECGInformation(
+    hospital="General Hospital",
+    patient_name="John Doe",
+    age=45,
+    sex="Male",
+    date="2026-03-04",
+    machine_model="ECG-Pro 3000"
+)
+
+# 2. Compute statistics automatically using NeuroKit2
+stats = pmecg.ECGStats.from_neurokit(df, sampling_frequency=500)
+
+# 3. Plot with information enabled
+plotter = pmecg.ECGPlotter(print_information=True)
+fig = plotter.plot(
+    df, 
+    configuration="4x3", 
+    information=info, 
+    stats=stats
+)
+```
+
+### Customizing the Plotter
+
+The `ECGPlotter` class allows full control over the visual style:
+
+```python
+plotter = pmecg.ECGPlotter(
+    speed=25.0,           # Paper speed in mm/s
+    voltage=10.0,         # Amplitude in mm/mV
+    line_width=0.7,       # Thickness of the signal
+    grid_color="#e0e0e0", # Custom grid color
+    show_time_axis=True   # Show time ticks at the bottom
+)
 ```
 
 ## Development
