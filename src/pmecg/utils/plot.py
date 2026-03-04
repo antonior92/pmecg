@@ -44,6 +44,10 @@ class _RenderContext:
         Paper speed in mm/s (used in the diagnostics label).
     voltage : float
         Vertical scale in mm/mV (used in the diagnostics label).
+    show_calibration : bool
+        Whether to draw the 1 mV calibration pulse in the left margin of each row.
+    show_leads_labels : bool
+        Whether to print lead names onto the plot.
     """
 
     mv_to_inches: float

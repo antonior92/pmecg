@@ -11,18 +11,13 @@
 - **Paper-like Rendering**: Classic grid background with major/minor squares.
 - **Flexible Layouts**: Plot any combination of leads using templates ('4x3', '2x6', etc.) or custom lists.
 - **Diagnostic Metadata**: Print patient information (name, age, sex) and recording details directly on the plot.
-- **Automatic Statistics**: Compute and display ECG metrics (HR, SNR, HRV, QRS duration, etc.) with [NeuroKit2](https://github.com/neurokit/NeuroKit) integration.
+- **Diagnostic Statistics**: Display ECG metrics (HR, SNR, HRV, QRS duration, etc.) directly on the plot.
 - **Matplotlib-based**: Export to high-quality formats like PNG, PDF, or SVG.
 
 ## Installation
 
 ```bash
 pip install pmecg
-```
-
-For automatic ECG statistics support, install with the `nk` extra:
-```bash
-pip install "pmecg[nk]"
 ```
 
 ## Quick start
@@ -63,8 +58,8 @@ info = pmecg.ECGInformation(
     machine_model="ECG-Pro 3000"
 )
 
-# 2. Compute statistics automatically using NeuroKit2
-stats = pmecg.ECGStats.from_neurokit(df, sampling_frequency=500)
+# 2. Define statistics manually
+stats = pmecg.ECGStats(bpm=72, rr_interval_ms=833, qrs_duration_ms=90)
 
 # 3. Plot with information enabled
 plotter = pmecg.ECGPlotter(print_information=True)

@@ -112,7 +112,7 @@ class ECGPlotter:
 
     def __init__(
         self,
-        grid_mode: Literal['inch', 'cm'] | None = 'cm',
+        grid_mode: Literal['cm'] | None = 'cm',
         speed: float = 50.0,
         voltage: float = 20.0,
         row_spacing: float = 2.0,
