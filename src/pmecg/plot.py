@@ -152,11 +152,14 @@ class ECGInformation:
         Date of the recording (any human-readable format, e.g. "2024-01-15").
     machine_model : str, optional
         ECG machine model, printed in the bottom-right corner.
+    filter : str, optional
+        Description of the filter(s) applied to the ECG (e.g. "0.05-150 Hz").
     """
     hospital: str | None = None
     patient_name: str | None = None
     date: str | None = None
     machine_model: str | None = None
+    filter: str | None = None
 
 ECGDataType = Union[
     tuple[Union[list[np.ndarray], np.ndarray], list[str]],

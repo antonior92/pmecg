@@ -352,6 +352,9 @@ def _print_information(
         f"Freq: {sampling_frequency:.0f} Hz   "
         f"Leads: {leads_str}"
     )
+    if information is not None and getattr(information, "filter", None):
+        diag_line += f"   Filter: {information.filter}"
+
     ax.text(x_left, bottom_margin, diag_line, va="bottom", ha="left", zorder=5, **font)
 
     # --- Bottom-right: machine model ---
