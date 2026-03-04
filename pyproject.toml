@@ -26,6 +26,9 @@ dependencies = [
     "pandas>=2.3",
 ]
 
+[project.optional-dependencies]
+nk = ["neurokit2>=0.2.12"]
+
 [project.urls]
 Homepage = "https://github.com/bonassifabio/pmecg"
 Repository = "https://github.com/bonassifabio/pmecg"
@@ -39,7 +42,6 @@ build-backend = "uv_build"
 dev = [
     "pytest>=8.0",
     "ipython",
-    "neurokit2>=0.2.12",
     "ruff>=0.9",
     "scipy>=1.13.1",
 ]
