@@ -244,7 +244,7 @@ class ECGPlotter:
 
     def plot(self,
              ecg_data: ECGDataType,
-             configuration: ConfigurationDataType,
+             configuration: ConfigurationDataType | None = None,
              sampling_frequency: float = 500.0,
              show: bool = True,
              information: ECGInformation | None = None,
@@ -260,12 +260,14 @@ class ECGPlotter:
                 - tuple[np.ndarray, list[str]], where the array has shape (n_samples, n_leads)
                   and the list of strings contains the names of the leads
                 - pd.DataFrame, where each column corresponds to a lead and the column names are the names of the leads
-        configuration : ConfigurationDataType
+        configuration : ConfigurationDataType | None, optional
             The plotting configuration to be used. The following formats are supported:
                 - list[list[str] | str], where sub-lists indicate what leads are plotted in
                   each row, while strings are used to indicate that the lead should be plotted
                   for its entire duration.
                 - str, to indicate notable templates.
+                - None, to plot all leads in the DataFrame for their entire duration.
+                By default None.
         sampling_frequency : float, optional
             The sampling frequency of the ECG data in Hz, by default 500.0
         show : bool, optional

@@ -212,3 +212,21 @@ class TestApplyConfiguration:
                     assert np.isnan(signal[last])
                 else:
                     assert signal[last] == LEAD_VALUE[lead]
+
+
+class TestApplyConfigurationDefault:
+    def test_default_none_configuration(self):
+        """None configuration should plot all leads in the DataFrame for their entire duration."""
+        df = _make_12lead_df()
+        # Disable disconnect_segments to allow direct array comparison
+        result = _apply_configuration(df, configuration=None, disconnect_segments=False)
+        
+        # Expecting one row per lead
+        assert len(result) == len(df.columns)
+        
+        for i, (signal, selected_leads) in enumerate(result):
+            # Each row should contain exactly one lead
+            assert len(selected_leads) == 1
+            assert selected_leads[0] == df.columns[i]
+            # The signal should be the lead data
+            np.testing.assert_array_equal(signal, df[df.columns[i]].values)

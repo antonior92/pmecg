@@ -162,9 +162,9 @@ def _segment_leads(
 
 def _apply_configuration(
     df: pd.DataFrame,
-    configuration: list[list[str]] | str,
+    configuration: list[list[str] | str] | str | None = None,
     disconnect_segments: bool = True,
-) -> tuple[tuple[np.ndarray, list[str]]]:
+) -> tuple[tuple[np.ndarray, list[str]], ...]:
     """Apply the plotting configuration to the ECG data.
 
     Parameters
@@ -172,22 +172,27 @@ def _apply_configuration(
     df : pd.DataFrame
         The DataFrame containing the ECG data, where each column corresponds to a
         lead and the column names are the names of the leads.
-    configuration : list[list[str]] | str
+    configuration : list[list[str] | str] | str | None, optional
         The plotting configuration to be applied. If a list of lists of strings is
         provided, it indicates what leads are plotted in each row.
         If a single lead string is provided, it indicates that only that lead should
         be plotted for its entire duration. If the configuration is a string that
         matches one of the keys in ``TEMPLATE_CONFIGURATIONS``, the corresponding
         template configuration will be applied.
+        If None, all leads in the DataFrame are plotted for their entire duration.
+        By default None.
     disconnect_segments : bool, optional
         Passed through to :func:`_segment_leads`. By default True.
 
     Returns
     -------
-    tuple[tuple[np.ndarray, list[str]]]
-        A N-uple of (signal, selected_leads) pairs — one per row in the
+    tuple[tuple[np.ndarray, list[str]], ...]
+        A tuple of (signal, selected_leads) pairs — one per row in the
         configuration — where signal is the segmented ECG data for that row.
     """
+    if configuration is None:
+        configuration = [[lead] for lead in df.columns]
+
     result = []
     if isinstance(configuration, str):
         if configuration in SUPPORTED_LEADS:
