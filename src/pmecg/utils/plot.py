@@ -54,6 +54,7 @@ class _RenderContext:
     speed: float
     voltage: float
     show_calibration: bool
+    show_leads_labels: bool
 
 
 def _nice_tick_step(total_time_s: float) -> float:
@@ -241,16 +242,17 @@ def _plot_row(
         _plot_calibration_pulse(ax, ctx, y_offset)
 
     # --- Labels ---
-    # Each lead occupies an equal segment of the total sample length.
-    # Place each label at the top-left corner of its segment's bounding box.
-    row_half_height_inches = ctx.row_spacing_inches / 2.0
-    segment_len = n_samples // n_leads
-    for i, lead_name in enumerate(leads):
-        # x: left edge of this segment (sample i*segment_len), shifted by the left margin
-        x_label = left_margin_inches + i * segment_len * ctx.time_to_inches
-        # y: top edge of the row's allocated vertical space
-        y_label = y_offset + row_half_height_inches
-        ax.text(x_label, y_label, lead_name, va="top", ha="left", fontsize=9, fontfamily="monospace")
+    if ctx.show_leads_labels:
+        # Each lead occupies an equal segment of the total sample length.
+        # Place each label at the top-left corner of its segment's bounding box.
+        row_half_height_inches = ctx.row_spacing_inches / 2.0
+        segment_len = n_samples // n_leads
+        for i, lead_name in enumerate(leads):
+            # x: left edge of this segment (sample i*segment_len), shifted by the left margin
+            x_label = left_margin_inches + i * segment_len * ctx.time_to_inches
+            # y: top edge of the row's allocated vertical space
+            y_label = y_offset + row_half_height_inches
+            ax.text(x_label, y_label, lead_name, va="top", ha="left", fontsize=9, fontfamily="monospace")
 
 
 def _plot_grid(
