@@ -244,8 +244,14 @@ APPLY_CONFIG_CASES = [
         id="warn-11-leads",
     ),
     pytest.param(
-        [["I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6"], ["I", "II", "III", "AVR", "AVL", "AVF", "V1"]],
-        [["I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6"], ["I", "II", "III", "AVR", "AVL", "AVF", "V1"]],
+        [
+            ["I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6"],
+            ["I", "II", "III", "AVR", "AVL", "AVF", "V1"],
+        ],
+        [
+            ["I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6"],
+            ["I", "II", "III", "AVR", "AVL", "AVF", "V1"],
+        ],
         id="mixed-warn",
     ),
     pytest.param(

@@ -16,9 +16,9 @@ from .utils.data import (
 from .utils.plot import (
     LEFT_MARGIN_MM,
     MM_PER_INCH,
+    _adjust_row_distance,
     _compute_figure_size,
     _compute_row_offsets,
-    _adjust_row_distance,
     _nice_tick_step,
     _plot_grid,
     _plot_row,
